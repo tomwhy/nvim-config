@@ -3,19 +3,23 @@
 #   1. plugins (lazy.nvim sync: install missing, remove unused, update, rewrite lazy-lock.json)
 #   2. blink.cmp's prebuilt fuzzy-matcher binary for the new tag
 #   3. Treesitter parsers in site/ (needs the `tree-sitter` CLI and a C compiler)
-# then optionally pack the config for the offline machine.
+# then optionally pack the config for the offline machine, and report which
+# programs the plugins need at runtime (scripts/check-deps.sh).
 #
 # Usage: scripts/update.sh [output.tar]
 set -euo pipefail
 
-config_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+config_dir=$(dirname "$script_dir")
 # Point nvim at this directory, wherever it is checked out.
 export XDG_CONFIG_HOME=$(dirname "$config_dir")
 export NVIM_APPNAME=$(basename "$config_dir")
 
-for tool in nvim git curl tree-sitter cc; do
-	command -v "$tool" >/dev/null || { echo "error: '$tool' not found in PATH" >&2; exit 1; }
-done
+if ! "$script_dir/check-deps.sh" --update; then
+	echo "error: install the missing tools above first" >&2
+	exit 1
+fi
+echo
 
 run() { nvim --headless "$@" +qa; echo; }
 
@@ -38,4 +42,5 @@ if [[ $# -ge 1 ]]; then
 	echo "==> Packing $config_dir -> $out"
 	tar -C "$XDG_CONFIG_HOME" -cf "$out" "$NVIM_APPNAME"
 fi
-echo "Done."
+echo "==> Runtime dependencies on THIS machine (run scripts/check-deps.sh on the offline one too)"
+"$script_dir/check-deps.sh" || true
