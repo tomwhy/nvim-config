@@ -1,0 +1,4 @@
+# Vendored artifacts: plugin versions are pinned in lazy-lock.json, and
+# scripts/update.sh regenerates both directories.
+/plugins/
+/site/
