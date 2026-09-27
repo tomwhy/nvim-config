@@ -77,7 +77,6 @@ else
 
 	section "Optional tools"
 	check optional -    - "fzf-lua file finder (falls back to rg/find)"    fd fdfind
-	check optional -    - "generating tags for <leader>fts / <leader>ftr" ctags
 	check optional -    - "<leader>fm man page picker, man hover"        man
 	check optional 0.36 - "grug-far ast-grep engine (<localleader>e)"    ast-grep
 	check optional -    - "<leader>k formatting for C/C++"               clang-format-20 clang-format

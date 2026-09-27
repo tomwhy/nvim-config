@@ -11,8 +11,6 @@ map("n", "<leader>ff", "<cmd>FzfLua live_grep<cr>", { desc = "Search String" })
 map("n", "<leader>fw", "<cmd>FzfLua grep_cword<cr>", { desc = "Search word" })
 map("n", "<leader>fb", "<cmd>FzfLua buffers<cr>", { desc = "Buffers" })
 map("n", "<leader>fm", "<cmd>FzfLua manpages<cr>", { desc = "man" })
-map("n", "<leader>fts", "<cmd>FzfLua tags<cr>", { desc = "Search Tags" })
-map("n", "<leader>ftr", "<cmd>FzfLua tags_grep_cword<cr>", { desc = "Search refs" })
 map("n", "<leader>fs", function()
 	if #vim.lsp.get_clients({ bufnr = 0 }) == 0 then
 		require("fzf-lua").treesitter()

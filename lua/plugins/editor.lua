@@ -42,7 +42,6 @@ return {
 			spec = {
 				{ "<leader>t", group = "TODO" },
 				{ "<leader>f", group = "Find" },
-				{ "<leader>ft", group = "Tags" },
 				{ "<leader>c", group = "LSP" },
 				{ "<leader>cd", group = "Definitions" },
 				{ "<leader>cr", group = "Rename" },

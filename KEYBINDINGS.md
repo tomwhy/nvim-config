@@ -27,8 +27,6 @@ plugin defaults that this config keeps; everything else is defined in `lua/`.
 | `<leader>fs` | n | Document symbols (LSP, or Treesitter when no LSP) |
 | `<leader>fr` | n | Workspace symbols (LSP buffers only) |
 | `<leader>fm` | n | Man pages |
-| `<leader>fts` | n | Search tags |
-| `<leader>ftr` | n | Tags matching word under cursor |
 
 ## TODO / diagnostics — `<leader>t`
 
