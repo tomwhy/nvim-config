@@ -34,7 +34,7 @@ lua/config/
 lua/plugins/*.lua        plugin specs, grouped by area (ui, editor, coding, lsp, treesitter)
 after/lsp/<server>.lua   per-server overrides of nvim-lspconfig's defaults
 lazy-lock.json           exact plugin commits
-scripts/                 update.sh, check-deps.sh
+scripts/                 update.sh, check-deps.sh, fetch-tools.sh, install-tools.sh
 plugins/                 vendored plugins         (gitignored, created by update.sh)
 site/                    compiled Treesitter parsers (gitignored, created by update.sh)
 ```
@@ -52,6 +52,22 @@ mv ~/.config/nvim ~/.config/nvim.bak    # keep the old config until the new one 
 tar -xf nvim-offline.tar -C ~/.config   # the tarball holds a single "nvim" directory
 ~/.config/nvim/scripts/check-deps.sh    # see which programs still need installing
 ```
+
+If programs are missing or too old (the offline machine can't use `apt`), install them from
+the tools tarball made by [`scripts/fetch-tools.sh`](#scriptsfetch-toolssh-programs-for-the-offline-machine-needs-network):
+
+```bash
+tar -xf nvim-tools.tar                  # creates nvim-tools/
+nvim-tools/install.sh                   # installs into ~/.local (no sudo needed)
+# or: sudo nvim-tools/install.sh /usr/local
+```
+
+The installer puts `nvim` in `<prefix>/lib/nvim-linux-x86_64`, links it from
+`<prefix>/bin/nvim`, and copies `fzf`, `rg`, `fd` and `ast-grep` into `<prefix>/bin`. It
+warns if an older copy (from `apt`, for example) still comes first in `PATH`. If so, add
+`export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or remove the old packages. Then
+open a new shell and run `check-deps.sh` again. Running the installer again upgrades the
+tools in place.
 
 Start `nvim`. Nothing is downloaded at startup.
 
@@ -90,7 +106,31 @@ sudo apt install fzf ripgrep fd-find git
 ```
 
 Older distributions ship `fzf`/`rg` versions below the minimums. The script will flag them;
-install newer releases from the projects' GitHub pages in that case.
+use `scripts/fetch-tools.sh` (below) to get current releases in that case.
+
+### `scripts/fetch-tools.sh`: programs for the offline machine (needs network)
+
+```bash
+scripts/fetch-tools.sh ~/nvim-tools.tar
+```
+
+Downloads the latest x86_64 Linux release of each tool from GitHub and packs them, with
+an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 110 MB):
+
+| Tool | Build | Runs on |
+|---|---|---|
+| `nvim` | official release tarball | glibc ≥ 2.34 (Ubuntu 22.04+, RHEL 9+) |
+| `fzf` | static Go binary | any x86_64 Linux |
+| `rg`, `fd` | static musl builds | any x86_64 Linux |
+| `ast-grep` | glibc build (skipped if `unzip` is missing) | glibc ≥ 2.34 |
+
+`nvim-tools/VERSIONS` lists the versions that were packed. The networked machine needs
+`curl`, `tar` and `unzip`. Install the tarball on the offline machine as described
+[above](#installing-on-the-offline-machine).
+
+Not included: `git` and `man`, which come from the system's packages, and the language
+servers. `tree-sitter` isn't needed on the offline machine because the parsers are already
+compiled into `site/`.
 
 ### `scripts/update.sh`: refresh everything (needs network)
 
@@ -127,11 +167,12 @@ On the networked machine:
 git clone <this-repo> ~/work/nvim       # first time only; or extract a previous tarball
 cd ~/work/nvim && git pull
 scripts/update.sh ~/nvim-offline.tar
+scripts/fetch-tools.sh ~/nvim-tools.tar # when the tools need updating too
 git diff lazy-lock.json                 # review what changed
 git commit -am "Update plugins"
 ```
 
-Then copy `~/nvim-offline.tar` over and install it as described
+Then copy `~/nvim-offline.tar` (and `~/nvim-tools.tar`) over and install it as described
 [above](#installing-on-the-offline-machine).
 
 **Keep the directory named `nvim`.** The tarball holds a directory with the same name as the
