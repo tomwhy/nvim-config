@@ -4,7 +4,7 @@
 #
 # Usage: ./install.sh [prefix]   (default: ~/.local; use sudo for e.g. /usr/local)
 #   nvim  -> <prefix>/lib/nvim-linux-x86_64, linked from <prefix>/bin/nvim
-#   lib/* -> <prefix>/lib/<name> (clangd, pylsp's Python), linked or wrapped from <prefix>/bin
+#   lib/* -> <prefix>/lib/<name> (clangd, pylsp), linked or wrapped from <prefix>/bin
 #   rest  -> <prefix>/bin
 set -euo pipefail
 

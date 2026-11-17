@@ -16,7 +16,17 @@ fi
 required_missing=0
 optional_missing=0
 
-version_of() { timeout 5 "$1" --version 2>&1 | grep -oE '[0-9]+(\.[0-9]+)+' | head -1; }
+# version_of <cmd>: sets $ver to its version, or to "" if `<cmd> --version`
+# fails, with the first line it printed in $version_error
+version_of() {
+	local out
+	ver="" version_error=""
+	if out=$(timeout 5 "$1" --version 2>&1); then
+		ver=$(grep -oE '[0-9]+(\.[0-9]+)+' <<<"$out" | head -1)
+	else
+		version_error=$(head -1 <<<"$out")
+	fi
+}
 # version_ge A B: true if A >= B
 version_ge() { [[ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" == "$2" ]]; }
 
@@ -44,11 +54,12 @@ check() {
 	else
 		mark="✓" color=$green detail=$(command -v "$found")
 		if [[ $min != - || $rec != - ]]; then
-			local ver
-			ver=$(version_of "$found")
+			local ver version_error
+			version_of "$found"
 			detail="${ver:-?}  $detail"
 			if [[ -z $ver && $min != - ]]; then
 				mark="✗" color=$red detail="found, but '$found --version' failed (broken install?)  $(command -v "$found")"
+				[[ -n $version_error ]] && detail+=$'\n        '"$version_error"
 				if [[ $level == required ]]; then ((required_missing++)); else ((optional_missing++)); fi
 			elif [[ $min != - ]] && ! version_ge "$ver" "$min"; then
 				mark="✗" color=$red detail="${ver:-?} is too old (need >= $min)"
@@ -84,7 +95,7 @@ else
 
 	section "Language servers (only needed for the languages you edit)"
 	check optional - - "C/C++ (clangd)"                             clangd
-	check optional - - "Python (pylsp)"                             pylsp
+	check optional 1.0 - "Python (pylsp)"                           pylsp
 	check optional - - "Go (gopls)"                                 gopls
 	check optional - - "gopls: locating GOROOT / module cache"      go
 	check optional - - "JS/TS (ts_ls)"                              typescript-language-server

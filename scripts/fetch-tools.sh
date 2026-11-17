@@ -5,10 +5,16 @@
 # one tarball to carry to the offline machine.
 #
 # Usage: scripts/fetch-tools.sh [output.tar]   (default: ./nvim-tools.tar)
+#   PYLSP_PYTHON="3.13 3.14"   Python version(s) on the offline machine to fetch
+#                              pylsp for (default: 3.14); check with `python3 --version`
 set -euo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 out=$(realpath "${1:-nvim-tools.tar}")
+pylsp_python=${PYLSP_PYTHON:-3.14}
+for ver in $pylsp_python; do
+	[[ $ver =~ ^3\.[0-9]+$ ]] || { echo "error: PYLSP_PYTHON: '$ver' isn't a version like 3.14" >&2; exit 1; }
+done
 
 for cmd in curl tar gzip; do
 	command -v "$cmd" >/dev/null || { echo "error: $cmd is required" >&2; exit 1; }
@@ -88,32 +94,43 @@ else
 	echo "warning: unzip not found, skipping clangd (optional)" >&2
 fi
 
-# pylsp and its compiled dependencies only work with the Python they were
-# installed for, so bring a standalone, relocatable Python along and install
-# pylsp into it. bin/pylsp runs it from wherever install.sh puts it.
-fetch python astral-sh/python-build-standalone \
-	'cpython-3\.[0-9]+\.[0-9]+%2B[0-9]+-x86_64-unknown-linux-gnu-install_only_stripped\.tar\.gz'
-tar -C "$stage/lib" -xzf "$file"
-mv "$stage/lib/python" "$stage/lib/pylsp"
-# The release tag is a date; record the Python version instead.
-sed -i "s/^python .*/$(printf '%-10s %s' python "$("$stage/lib/pylsp/bin/python3" -c 'import platform; print(platform.python_version())')")/" "$stage/VERSIONS"
-echo "==> pylsp (pip install python-lsp-server[pyflakes,pycodestyle])"
-PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 "$stage/lib/pylsp/bin/python3" -m pip install \
-	--quiet --only-binary=:all: --no-warn-script-location "python-lsp-server[pyflakes,pycodestyle]"
-printf '%-10s %s\n' pylsp "$("$stage/lib/pylsp/bin/python3" -m pylsp --version 2>&1 | grep -oE '[0-9]+(\.[0-9]+)+' | head -1)" >>"$stage/VERSIONS"
-cat >"$stage/bin/pylsp" <<'WRAPPER'
+# pylsp's compiled dependencies (ujson, black, ...) only work with the Python
+# version they were built for, so install it once per Python version of the
+# offline machine into lib/pylsp/<version>. bin/pylsp runs the copy matching
+# the python3 it finds there, and says so clearly if there's none.
+if command -v python3 >/dev/null && python3 -m pip --version >/dev/null 2>&1; then
+	platforms=()
+	for glibc in 2_17 2_24 2_28 2_31 2_34; do platforms+=(--platform "manylinux_${glibc}_x86_64"); done
+	platforms+=(--platform manylinux2014_x86_64 --platform any)
+	for ver in $pylsp_python; do
+		echo "==> pylsp for Python $ver (python-lsp-server[pyflakes,pycodestyle])"
+		PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 python3 -m pip install --quiet \
+			--target "$stage/lib/pylsp/$ver" --python-version "$ver" --implementation cp \
+			--only-binary=:all: "${platforms[@]}" "python-lsp-server[pyflakes,pycodestyle]"
+		rm -rf "$stage/lib/pylsp/$ver/bin"
+		pylsp_version=$(ls -d "$stage/lib/pylsp/$ver"/python_lsp_server-*.dist-info | grep -oE '[0-9]+(\.[0-9]+)+' | tail -1)
+		printf '%-10s %s (Python %s)\n' pylsp "$pylsp_version" "$ver" >>"$stage/VERSIONS"
+	done
+	cat >"$stage/bin/pylsp" <<'WRAPPER'
 #!/bin/sh
-# pylsp from the standalone Python installed by nvim-tools/install.sh
-exec "$(dirname "$(readlink -f "$0")")/../lib/pylsp/bin/python3" -m pylsp "$@"
+# pylsp, run with this machine's python3 from the copy that nvim-tools/install.sh
+# put in <prefix>/lib/pylsp/<python version>.
+lib=$(dirname "$(readlink -f "$0")")/../lib/pylsp
+if ! ver=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null); then
+	echo "pylsp: python3 not found" >&2
+	exit 1
+fi
+if [ ! -d "$lib/$ver" ]; then
+	echo "pylsp: python3 is $ver, but pylsp was only fetched for Python $(echo $(ls "$lib"))" >&2
+	echo "pylsp: on the networked machine run: PYLSP_PYTHON=$ver scripts/fetch-tools.sh" >&2
+	exit 1
+fi
+PYTHONPATH="$lib/$ver${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m pylsp "$@"
 WRAPPER
-chmod 755 "$stage/bin/pylsp"
-# Drop the parts of Python pylsp doesn't use (Tcl/Tk, IDLE, pip, C headers).
-(
-	cd "$stage/lib/pylsp"
-	rm -rf include share lib/tcl* lib/tk* lib/itcl* lib/libtcl* lib/libtk* \
-		lib/python3.*/{idlelib,tkinter,turtledemo,ensurepip} \
-		lib/python3.*/lib-dynload/_tkinter* lib/python3.*/site-packages/pip*
-)
+	chmod 755 "$stage/bin/pylsp"
+else
+	echo "warning: python3 with pip not found, skipping pylsp (optional)" >&2
+fi
 
 install -m 755 "$script_dir/install-tools.sh" "$stage/install.sh"
 

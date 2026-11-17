@@ -63,7 +63,7 @@ nvim-tools/install.sh                   # installs into ~/.local (no sudo needed
 ```
 
 The installer puts `nvim` in `<prefix>/lib/nvim-linux-x86_64`, links it from
-`<prefix>/bin/nvim`, puts clangd and pylsp's Python in `<prefix>/lib/clangd` and
+`<prefix>/bin/nvim`, puts clangd and pylsp in `<prefix>/lib/clangd` and
 `<prefix>/lib/pylsp` with `clangd` and `pylsp` in `<prefix>/bin` pointing at them, and copies
 `fzf`, `rg`, `fd` and `ast-grep` into `<prefix>/bin`. It
 warns if an older copy (from `apt`, for example) still comes first in `PATH`. If so, add
@@ -114,10 +114,11 @@ use `scripts/fetch-tools.sh` (below) to get current releases in that case.
 
 ```bash
 scripts/fetch-tools.sh ~/nvim-tools.tar
+PYLSP_PYTHON="3.13 3.14" scripts/fetch-tools.sh ~/nvim-tools.tar   # pylsp for other/several Pythons
 ```
 
 Downloads the latest x86_64 Linux release of each tool from GitHub and packs them, with
-an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 470 MB, mostly clangd):
+an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 380 MB, mostly clangd):
 
 | Tool | Build | Runs on |
 |---|---|---|
@@ -126,15 +127,21 @@ an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 
 | `rg`, `fd` | static musl builds | any x86_64 Linux |
 | `ast-grep` | glibc build (skipped if `unzip` is missing) | glibc ≥ 2.34 |
 | `clangd` | official release, with its built-in headers (skipped if `unzip` is missing) | glibc ≥ 2.18 |
-| `pylsp` | `python-lsp-server` installed into a standalone Python ([python-build-standalone](https://github.com/astral-sh/python-build-standalone)), so it doesn't depend on the offline machine's Python | glibc ≥ 2.17 |
+| `pylsp` | `python-lsp-server` and its dependencies, built for the offline machine's Python version (see below) | `python3` of a version it was fetched for |
 
 `nvim-tools/VERSIONS` lists the versions that were packed. The networked machine needs
-`curl`, `tar` and `unzip`. Install the tarball on the offline machine as described
+`curl`, `tar`, `unzip`, and `python3` with pip (any version; it only downloads). Install the tarball on the offline machine as described
 [above](#installing-on-the-offline-machine).
 
 pylsp is `python-lsp-server[pyflakes,pycodestyle]`: completion, hover, definitions,
 references and rename through jedi, plus pyflakes (unused imports, undefined names) and
-pycodestyle (PEP 8 style) diagnostics. The bundled Python is used only by pylsp.
+pycodestyle (PEP 8 style) diagnostics. It runs with the offline machine's own `python3`, so
+it also sees the packages installed there. Its compiled dependencies only work with the
+Python version they were built for, so it's fetched per version into
+`lib/pylsp/<version>`: 3.14 by default, or the versions in `PYLSP_PYTHON` (check with
+`python3 --version` on the offline machine). `pylsp` picks the copy matching `python3`.
+If there's none (for example after a Python upgrade), it doesn't start, and `check-deps.sh`
+shows the reason with the `PYLSP_PYTHON=… scripts/fetch-tools.sh` command to fix it.
 
 Not included: `git` and `man`, which come from the system's packages, `clang-format`, and
 the other language servers (gopls, ts_ls, rust-analyzer). `tree-sitter` isn't needed on the offline machine because the parsers are already
