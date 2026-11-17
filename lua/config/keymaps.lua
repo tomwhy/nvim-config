@@ -24,6 +24,8 @@ map("n", "<leader>td", "<cmd>FzfLua diagnostics_workspace<cr>", { desc = "Diagno
 map("n", "<leader>tt", "<cmd>TodoFzfLua<cr>", { desc = "Show TODOs" })
 
 -- Misc
+-- Yank into the system clipboard ("+) instead of the unnamed register.
+map({ "n", "x" }, "<leader>Y", '"+y', { desc = "Yank to system clipboard" })
 map("n", "<leader>o", function() require("oil").open() end, { desc = "open oil" })
 map("n", "<leader>`", function() Snacks.terminal() end, { desc = "Open terminal" })
 map({ "n", "v" }, "<leader>k", function() require("conform").format({ async = true }) end, { desc = "format" })

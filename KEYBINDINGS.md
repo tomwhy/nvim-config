@@ -13,6 +13,7 @@ plugin defaults that this config keeps; everything else is defined in `lua/`.
 | `<C-o>` | n | Find files (fzf-lua) — **replaces** jump back |
 | `<M-->` | n | Jump back (what `<C-o>` normally does) |
 | `<M-=>` | n | Jump forward (same as `<C-i>`) |
+| `<leader>Y` | n, x | Yank to system clipboard (`"+y`; takes a motion in normal mode) |
 | `<leader>o` | n | Open oil file explorer on the current file's directory |
 | `` <leader>` `` | n | Toggle floating terminal |
 
