@@ -34,7 +34,7 @@ lua/config/
 lua/plugins/*.lua        plugin specs, grouped by area (ui, editor, coding, lsp, treesitter)
 after/lsp/<server>.lua   per-server overrides of nvim-lspconfig's defaults
 lazy-lock.json           exact plugin commits
-scripts/                 update.sh, check-deps.sh, fetch-tools.sh, install-tools.sh
+scripts/                 update.sh, verify.sh, check-deps.sh, fetch-tools.sh, install-tools.sh
 plugins/                 vendored plugins         (gitignored, created by update.sh)
 site/                    compiled Treesitter parsers (gitignored, created by update.sh)
 ```
@@ -143,14 +143,37 @@ Steps, in order:
 
 1. Runs `check-deps.sh --update`, and stops before changing anything if a tool is missing:
    `nvim` ≥ 0.12, `git`, `curl`, `tree-sitter` ≥ 0.26.1, a C compiler.
-2. `:Lazy sync` installs missing plugins, removes ones no longer in `lua/plugins/`, updates
-   the rest to the latest version, and rewrites `lazy-lock.json`.
-3. Downloads the blink.cmp matcher binary that matches its new version.
-4. Downloads and compiles every parser listed in `lua/plugins/treesitter.lua` into `site/`.
-5. If you passed a path, writes a tarball of the whole config directory there.
-6. Prints the `check-deps.sh` report for the machine it ran on.
+2. Copies the config (without `plugins/`, `site/`, `.git` and `*.tar`) into a scratch
+   directory next to it, and runs nvim there with empty data/state/cache directories.
+3. `:Lazy sync` downloads the latest version of every plugin in `lua/plugins/` and rewrites
+   `lazy-lock.json`.
+4. Downloads the blink.cmp matcher binary that matches its new version.
+5. Downloads and compiles every parser listed in `lua/plugins/treesitter.lua` into `site/`.
+6. Makes the `site/queries` links relative, runs `verify.sh` on the new build, and only if
+   it passes replaces `plugins/`, `site/` and `lazy-lock.json` in the config directory. If any
+   step failed, the config directory is left as it was.
+7. If you passed a path, writes a tarball of the config directory there (leaving out any
+   `*.tar` files in it) and runs `verify.sh` on the tarball. If that fails, don't copy it.
+8. Prints the `check-deps.sh` report for the machine it ran on.
 
-The first run takes a few minutes. Later runs only fetch what changed.
+Every run starts from scratch and downloads everything, so the result never depends on what
+an earlier run (or your everyday Neovim) left behind. It takes a few minutes each time.
+
+### `scripts/verify.sh`: check a config or tarball works offline
+
+```bash
+scripts/verify.sh ~/nvim-offline.tar    # a tarball made by update.sh
+scripts/verify.sh ~/.config/nvim        # or a config directory
+```
+
+Starts Neovim headless the way the offline machine will: the network cut off (when
+`unshare -rn` is allowed), empty data/state/cache directories, and a tarball extracted
+somewhere other than where it was built. It checks that there are no broken links, that
+startup prints no errors, that every plugin is installed at its `lazy-lock.json` commit and
+loads, that every parser in `lua/plugins/treesitter.lua` loads with its highlight queries
+and highlighting starts, and that blink.cmp's binary loads. It exits 1 if anything fails.
+`update.sh` runs it for you; it is also handy on the offline machine after extracting.
+It doesn't check external programs; that's `check-deps.sh`.
 
 One-time setup for the networked machine (Ubuntu):
 
