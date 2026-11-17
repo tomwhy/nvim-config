@@ -5,7 +5,10 @@ return {
 		dependencies = { "echasnovski/mini.icons" },
 		opts = {
 			grep = {
-				rg_opts = "--column --line-number --no-heading --color=always --smart-case --max-columns=4096 --hidden -e",
+				rg_opts = "--column --line-number --no-heading --color=always --smart-case --max-columns=4096 --hidden --no-ignore -e",
+			},
+			files = {
+				fd_opts = "--color=never --type f --hidden --follow --no-ignore --exclude .git",
 			},
 		},
 		init = function()
