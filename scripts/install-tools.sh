@@ -4,6 +4,7 @@
 #
 # Usage: ./install.sh [prefix]   (default: ~/.local; use sudo for e.g. /usr/local)
 #   nvim  -> <prefix>/lib/nvim-linux-x86_64, linked from <prefix>/bin/nvim
+#   lib/* -> <prefix>/lib/<name> (clangd, pylsp's Python), linked or wrapped from <prefix>/bin
 #   rest  -> <prefix>/bin
 set -euo pipefail
 
@@ -23,9 +24,22 @@ if [[ -d $src/nvim-linux-x86_64 ]]; then
 	ln -sfn "$prefix/lib/nvim-linux-x86_64/bin/nvim" "$prefix/bin/nvim"
 fi
 
+for d in "$src"/lib/*/; do
+	[[ -d $d ]] || continue
+	d=${d%/}
+	echo "==> $(basename "$d") -> $prefix/lib/$(basename "$d")"
+	rm -rf "${prefix:?}/lib/$(basename "$d")"
+	cp -r "$d" "$prefix/lib/"
+done
+
 for f in "$src"/bin/*; do
 	echo "==> $(basename "$f") -> $prefix/bin"
-	install -m 755 "$f" "$prefix/bin/"
+	if [[ -L $f ]]; then
+		# Relative links into lib/ (e.g. clangd) work as-is next to <prefix>/lib.
+		ln -sfn "$(readlink "$f")" "$prefix/bin/$(basename "$f")"
+	else
+		install -m 755 "$f" "$prefix/bin/"
+	fi
 done
 
 # Warn about older copies that would still win in PATH (e.g. from apt in /usr/bin).
@@ -42,7 +56,7 @@ done
 if ((shadowed)); then
 	echo "         Put $prefix/bin first in PATH, e.g. add to ~/.bashrc:" >&2
 	echo "           export PATH=\"$prefix/bin:\$PATH\"" >&2
-	echo "         or remove the older copies (sudo apt remove neovim fzf ripgrep fd-find)." >&2
+	echo "         or remove the older copies (sudo apt remove neovim fzf ripgrep fd-find clangd python3-pylsp)." >&2
 fi
 
 echo

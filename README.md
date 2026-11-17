@@ -63,7 +63,9 @@ nvim-tools/install.sh                   # installs into ~/.local (no sudo needed
 ```
 
 The installer puts `nvim` in `<prefix>/lib/nvim-linux-x86_64`, links it from
-`<prefix>/bin/nvim`, and copies `fzf`, `rg`, `fd` and `ast-grep` into `<prefix>/bin`. It
+`<prefix>/bin/nvim`, puts clangd and pylsp's Python in `<prefix>/lib/clangd` and
+`<prefix>/lib/pylsp` with `clangd` and `pylsp` in `<prefix>/bin` pointing at them, and copies
+`fzf`, `rg`, `fd` and `ast-grep` into `<prefix>/bin`. It
 warns if an older copy (from `apt`, for example) still comes first in `PATH`. If so, add
 `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or remove the old packages. Then
 open a new shell and run `check-deps.sh` again. Running the installer again upgrades the
@@ -115,7 +117,7 @@ scripts/fetch-tools.sh ~/nvim-tools.tar
 ```
 
 Downloads the latest x86_64 Linux release of each tool from GitHub and packs them, with
-an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 110 MB):
+an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 470 MB, mostly clangd):
 
 | Tool | Build | Runs on |
 |---|---|---|
@@ -123,13 +125,19 @@ an `install.sh` (a copy of `scripts/install-tools.sh`), into one tarball (about 
 | `fzf` | static Go binary | any x86_64 Linux |
 | `rg`, `fd` | static musl builds | any x86_64 Linux |
 | `ast-grep` | glibc build (skipped if `unzip` is missing) | glibc ≥ 2.34 |
+| `clangd` | official release, with its built-in headers (skipped if `unzip` is missing) | glibc ≥ 2.18 |
+| `pylsp` | `python-lsp-server` installed into a standalone Python ([python-build-standalone](https://github.com/astral-sh/python-build-standalone)), so it doesn't depend on the offline machine's Python | glibc ≥ 2.17 |
 
 `nvim-tools/VERSIONS` lists the versions that were packed. The networked machine needs
 `curl`, `tar` and `unzip`. Install the tarball on the offline machine as described
 [above](#installing-on-the-offline-machine).
 
-Not included: `git` and `man`, which come from the system's packages, and the language
-servers. `tree-sitter` isn't needed on the offline machine because the parsers are already
+pylsp is `python-lsp-server[pyflakes,pycodestyle]`: completion, hover, definitions,
+references and rename through jedi, plus pyflakes (unused imports, undefined names) and
+pycodestyle (PEP 8 style) diagnostics. The bundled Python is used only by pylsp.
+
+Not included: `git` and `man`, which come from the system's packages, `clang-format`, and
+the other language servers (gopls, ts_ls, rust-analyzer). `tree-sitter` isn't needed on the offline machine because the parsers are already
 compiled into `site/`.
 
 ### `scripts/update.sh`: refresh everything (needs network)
